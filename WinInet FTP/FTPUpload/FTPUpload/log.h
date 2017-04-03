@@ -1,0 +1,1 @@
+void Logfile(char* filename, char* st, char* ed);
