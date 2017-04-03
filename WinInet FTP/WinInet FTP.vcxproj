@@ -155,11 +155,13 @@
     <ClCompile Include="Row.cpp" />
     <ClCompile Include="source.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="SystemCalibration.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApxModifier.h" />
     <ClInclude Include="Row.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="SystemCalibration.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

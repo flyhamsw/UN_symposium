@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string>
+#include "SystemCalibration.h"
+#include <opencv2\highgui.hpp>
 
 using namespace std;
 
@@ -87,7 +89,7 @@ void ApxModifier::loadData()
 	{
 		//Split data and store to RowGPGGA, RowPASHR, RowPTNL
 		char line[300];
-		
+
 		while (!f.eof())
 		{
 			//Get a line and store to a stringstream
@@ -100,7 +102,7 @@ void ApxModifier::loadData()
 				//Determine whether it is GPS data or INS Data
 				char* lineHeader = new char[20];
 				line_stream.getline(lineHeader, 20, ',');
-				
+
 				if (strcmp(lineHeader, "$GPGGA") == 0)
 				{
 					char* time = new char[20];
@@ -134,7 +136,7 @@ void ApxModifier::loadData()
 					line_stream.getline(checksum, 20, ',');
 
 					RowGPGGA* row = new RowGPGGA(time, lat, latHeading, lng, lngHeading, gpsQuality, numOfSV, HDOP, alt, altUnit, heightWGS84, heightWGS84Unit, DGPS, checksum);
-					
+
 					qGPGGA.push(row);
 					qGPGGA_Det.push(row);
 				}
@@ -165,7 +167,7 @@ void ApxModifier::loadData()
 					line_stream.getline(IMUStatus, 20, ',');
 
 					RowPASHR* row = new RowPASHR(time, heading, headingTrue, roll, pitch, heave, rollAccuracy, pitchAccuracy, headingAccuracy, aidingStatus, IMUStatus);
-					
+
 					qPASHR.push(row);
 				}
 				else if (strcmp(lineHeader, "$PTNL") == 0)
@@ -223,7 +225,7 @@ void convertWGS84toXYZ(double* x, double* y, double* z)
 bool ApxModifier::detData()
 {
 	queue<double> qDistance;
-	
+
 	queue<double> qx;
 	queue<double> qy;
 
@@ -243,7 +245,7 @@ bool ApxModifier::detData()
 		RowGPGGA* rowA = qGPGGA_Det.front();
 		qGPGGA_Det.pop();
 		RowGPGGA* rowB = qGPGGA_Det.front();
-		
+
 		double x_a = atof(rowA->lng);
 		double y_a = atof(rowA->lat);
 
@@ -275,7 +277,7 @@ bool ApxModifier::detData()
 
 		convertWGS84toXYZ(&x_a, &y_a, &z_a);
 		convertWGS84toXYZ(&x_b, &y_b, &z_b);
-	
+
 		double distance = sqrt(pow((x_b - x_a), 2) + pow((y_b - y_a), 2) + pow((z_b - z_a), 2));
 
 		qDistance.push(distance);
@@ -347,7 +349,7 @@ bool ApxModifier::detData()
 	{
 		cout << "UAV was too slow" << endl;
 		return false;
-	}	
+	}
 }
 
 void ApxModifier::matchData(bool det_option)
@@ -508,6 +510,12 @@ void ApxModifier::interpolateData()
 				weightedPitch = (atof(rowBefore->rowPASHR->pitch)*weightA + atof(rowAfter->rowPASHR->pitch)*weightB) / (weightA + weightB);
 			}
 
+			//Apply system calibration (2017/3/27)
+			weightedHeading = weightedHeading * pi / 180;
+			weightedRoll = weightedRoll * pi / 180;
+			weightedPitch = weightedPitch * pi / 180;
+			SystemCalibration(&weightedHeading, &weightedRoll, &weightedPitch);
+
 			//Split weighted values into Degree and Minute
 			double wLat_min = fmod(weightedLat, 100);
 			double wLat_deg = ((weightedLat - wLat_min) / 100);
@@ -572,7 +580,8 @@ void ApxModifier::writeNewFile(char* txt_filename)
 
 		if (fnew.is_open())
 		{
-			fnew << jpgName << ".jpg" << '\t' << rowInterpolated->X << '\t' << rowInterpolated->Y << '\t' << rowInterpolated->Z << '\t' << rowInterpolated->roll*pi/180 << '\t' << rowInterpolated->pitch*pi / 180 << '\t' << rowInterpolated->heading*pi / 180;
+			//fnew << jpgName << ".jpg" << '\t' << rowInterpolated->X << '\t' << rowInterpolated->Y << '\t' << rowInterpolated->Z << '\t' << rowInterpolated->roll*pi/180 << '\t' << rowInterpolated->pitch*pi / 180 << '\t' << rowInterpolated->heading*pi / 180;
+			fnew << jpgName << ".jpg" << '\t' << rowInterpolated->X << '\t' << rowInterpolated->Y << '\t' << rowInterpolated->Z << '\t' << rowInterpolated->roll << '\t' << rowInterpolated->pitch << '\t' << rowInterpolated->heading;
 		}
 
 		fnew.close();
